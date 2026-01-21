@@ -3,43 +3,57 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface FormData {
-  name: string;
-  email: string;
-  company: string;
-  message: string;
-}
-
 export function ContactForm() {
-  const [formData, setFormData] = useState<FormData>({
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [fieldValues, setFieldValues] = useState({
     name: "",
     email: "",
     company: "",
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleFieldChange = (field: string, value: string) => {
+    setFieldValues((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsSubmitting(true);
+    setError(null);
 
-    // Mock submission - simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+    try {
+      const response = await fetch("/forms.html", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(formData as unknown as Record<string, string>).toString(),
+      });
+
+      if (response.ok) {
+        setIsSuccess(true);
+        setFieldValues({ name: "", email: "", company: "", message: "" });
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (isSubmitted) {
+  const handleReset = () => {
+    setIsSuccess(false);
+    setError(null);
+    setFieldValues({ name: "", email: "", company: "", message: "" });
+  };
+
+  if (isSuccess) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center text-center">
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-foreground text-background">
@@ -62,10 +76,7 @@ export function ContactForm() {
           Thanks for reaching out. We&apos;ll get back to you within 24 hours.
         </p>
         <button
-          onClick={() => {
-            setIsSubmitted(false);
-            setFormData({ name: "", email: "", company: "", message: "" });
-          }}
+          onClick={handleReset}
           className="text-muted underline transition-colors hover:text-foreground"
         >
           Send another message
@@ -75,14 +86,28 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form 
+      name="contact" 
+      method="POST" 
+      data-netlify="true" 
+      data-netlify-honeypot="bot-field"
+      onSubmit={handleSubmit}
+      className="space-y-8"
+    >
+      <input type="hidden" name="form-name" value="contact" />
+      <p className="hidden">
+        <label>
+          Don&apos;t fill this out if you&apos;re human: <input name="bot-field" />
+        </label>
+      </p>
+      
       <div className="grid gap-8 md:grid-cols-2">
         <div className="relative">
           <label
             htmlFor="name"
             className={cn(
-              "absolute left-0 transition-all duration-200",
-              focusedField === "name" || formData.name
+              "absolute left-0 transition-all duration-200 pointer-events-none",
+              focusedField === "name" || fieldValues.name
                 ? "-top-6 text-sm text-muted"
                 : "top-4 text-lg"
             )}
@@ -93,10 +118,12 @@ export function ContactForm() {
             type="text"
             id="name"
             name="name"
-            value={formData.name}
-            onChange={handleChange}
             onFocus={() => setFocusedField("name")}
-            onBlur={() => setFocusedField(null)}
+            onBlur={(e) => {
+              setFocusedField(null);
+              handleFieldChange("name", e.target.value);
+            }}
+            onChange={(e) => handleFieldChange("name", e.target.value)}
             required
             className="w-full border-b-2 border-border bg-transparent py-4 text-lg outline-none transition-colors focus:border-foreground"
           />
@@ -106,8 +133,8 @@ export function ContactForm() {
           <label
             htmlFor="email"
             className={cn(
-              "absolute left-0 transition-all duration-200",
-              focusedField === "email" || formData.email
+              "absolute left-0 transition-all duration-200 pointer-events-none",
+              focusedField === "email" || fieldValues.email
                 ? "-top-6 text-sm text-muted"
                 : "top-4 text-lg"
             )}
@@ -118,10 +145,12 @@ export function ContactForm() {
             type="email"
             id="email"
             name="email"
-            value={formData.email}
-            onChange={handleChange}
             onFocus={() => setFocusedField("email")}
-            onBlur={() => setFocusedField(null)}
+            onBlur={(e) => {
+              setFocusedField(null);
+              handleFieldChange("email", e.target.value);
+            }}
+            onChange={(e) => handleFieldChange("email", e.target.value)}
             required
             className="w-full border-b-2 border-border bg-transparent py-4 text-lg outline-none transition-colors focus:border-foreground"
           />
@@ -132,8 +161,8 @@ export function ContactForm() {
         <label
           htmlFor="company"
           className={cn(
-            "absolute left-0 transition-all duration-200",
-            focusedField === "company" || formData.company
+            "absolute left-0 transition-all duration-200 pointer-events-none",
+            focusedField === "company" || fieldValues.company
               ? "-top-6 text-sm text-muted"
               : "top-4 text-lg"
           )}
@@ -144,10 +173,12 @@ export function ContactForm() {
           type="text"
           id="company"
           name="company"
-          value={formData.company}
-          onChange={handleChange}
           onFocus={() => setFocusedField("company")}
-          onBlur={() => setFocusedField(null)}
+          onBlur={(e) => {
+            setFocusedField(null);
+            handleFieldChange("company", e.target.value);
+          }}
+          onChange={(e) => handleFieldChange("company", e.target.value)}
           className="w-full border-b-2 border-border bg-transparent py-4 text-lg outline-none transition-colors focus:border-foreground"
         />
       </div>
@@ -156,8 +187,8 @@ export function ContactForm() {
         <label
           htmlFor="message"
           className={cn(
-            "absolute left-0 transition-all duration-200",
-            focusedField === "message" || formData.message
+            "absolute left-0 transition-all duration-200 pointer-events-none",
+            focusedField === "message" || fieldValues.message
               ? "-top-6 text-sm text-muted"
               : "top-4 text-lg"
           )}
@@ -167,69 +198,72 @@ export function ContactForm() {
         <textarea
           id="message"
           name="message"
-          value={formData.message}
-          onChange={handleChange}
           onFocus={() => setFocusedField("message")}
-          onBlur={() => setFocusedField(null)}
+          onBlur={(e) => {
+            setFocusedField(null);
+            handleFieldChange("message", e.target.value);
+          }}
+          onChange={(e) => handleFieldChange("message", e.target.value)}
           required
           rows={4}
           className="w-full resize-none border-b-2 border-border bg-transparent py-4 text-lg outline-none transition-colors focus:border-foreground"
         />
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={isSubmitting}
         className={cn(
           "group inline-flex items-center gap-3 rounded-full border-2 border-foreground bg-foreground px-8 py-4 text-lg font-medium text-background transition-all duration-300",
-          isSubmitting
-            ? "cursor-not-allowed opacity-70"
-            : "hover:bg-transparent hover:text-foreground"
+          "hover:bg-transparent hover:text-foreground",
+          "disabled:cursor-not-allowed disabled:opacity-70"
         )}
       >
-        {isSubmitting ? (
-          <>
-            <svg
-              className="h-5 w-5 animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            Sending...
-          </>
-        ) : (
-          <>
-            Send Message
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
+        {isSubmitting ? "Sending..." : "Send Message"}
+        {!isSubmitting && (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="transition-transform duration-300 group-hover:translate-x-1"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        )}
+        {isSubmitting && (
+          <svg
+            className="h-5 w-5 animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
               stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="transition-transform duration-300 group-hover:translate-x-1"
-            >
-              <path d="M5 12h14" />
-              <path d="m12 5 7 7-7 7" />
-            </svg>
-          </>
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
         )}
       </button>
     </form>
