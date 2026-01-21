@@ -41,19 +41,29 @@ function FluidScratchHero() {
   const fluidConfig = useMemo<FluidMaskConfig>(() => {
     if (typeof window === "undefined") {
       return {
-        radius: 0.04,
-        strength: 0.85,
-        dissipation: 0.992,
+        radius: 0.01,
+        strength: 0.45,
+        dissipation: 6.5,
         backgroundColor: [0.039, 0.039, 0.039],
+        curl: 30,
+        velocityDissipation: 0.85,
+        splatForce: 13500,
+        pressureIterations: 40,
+        simResolution: 128,
       };
     }
     const styles = getComputedStyle(document.documentElement);
     const bgColor = styles.getPropertyValue("--background").trim();
     return {
-      radius: 0.04,
-      strength: 0.85,
-      dissipation: 0.992,
+      radius: 0.01,
+      strength: 0.45,
+      dissipation: 6.5,
       backgroundColor: hexToRgb(bgColor),
+      curl: 30,
+      velocityDissipation: 0.85,
+      splatForce: 13500,
+      pressureIterations: 40,
+      simResolution: 128,
     };
   }, [resolvedTheme]);
   
