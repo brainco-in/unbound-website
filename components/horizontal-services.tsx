@@ -157,6 +157,7 @@ export function HorizontalServices() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   // Device-based detection instead of size-based
   const isTouchDevice = useIsTouchDevice();
 
@@ -217,6 +218,32 @@ export function HorizontalServices() {
     };
   }, [isTouchDevice]);
 
+  // Touch event handlers to allow vertical scroll to pass through
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isTouchDevice) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isTouchDevice || !touchStartRef.current) return;
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    
+    // If scrolling more vertically than horizontally, allow it to pass through
+    // by not preventing default behavior
+    if (deltaY > deltaX) {
+      // Vertical scroll detected - let it pass through to page scroll
+      return;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+  };
+
   return (
     <section
       ref={containerRef}
@@ -235,10 +262,17 @@ export function HorizontalServices() {
         className={cn(
           "flex items-end",
           isTouchDevice
-            ? "h-full gap-4 overflow-x-auto snap-x snap-mandatory px-6 pt-32 pb-32 hide-scrollbar touch-pan-x"
+            ? "h-full gap-4 overflow-x-auto snap-x snap-mandatory px-6 pt-32 pb-32 hide-scrollbar"
             : "h-full gap-4 pl-6 pr-[50vw] py-32 will-change-transform md:gap-6 md:pl-8 lg:gap-8"
         )}
-        style={{ width: isTouchDevice ? "100%" : "fit-content" }}
+        style={{ 
+          width: isTouchDevice ? "100%" : "fit-content",
+          overscrollBehaviorX: "contain",
+          overscrollBehaviorY: "auto"
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Spacer for header */}
         <div className="h-full w-[15vw] flex-shrink-0 md:w-[18vw] lg:w-[20vw]" />
